@@ -1,0 +1,61 @@
+GPT Function Calling
+
+Developers can now describe functions to GPT-4 and GPT-3.5-turbo, and have the model intelligently choose to output a JSON object containing arguments to call those functions. This is a new way to more reliably connect GPT's capabilities with external tools and APIs. In particular, the ability to incorporate functional calls to external APIs solves the main limitation of the GPT models, namely, it's lack of access to external data sources and up-to-date information beyond the 2021 knowledge cutoff date. This also means that users can effectively make their own API calls entirely with natural language, and GPT-4 will intelligently route that request to the appropriate function, and summarize the results in a user-friendly way.
+
+Source: https://www.mlq.ai/gpt-function-calling-getting-started/
+
+Example:
+
+```python
+def get_current_weather(location, unit='fahrenheit'):
+    weather_info = {
+        'location': location,
+        'temperature': '72',
+        'unit': unit,
+        'forecast': ['sunny', 'windy'],
+    }
+    return json.dumps(weather_info)
+
+response = openai.ChatCompletion.create(
+    model='gpt-4-0613',
+    messages=[{'role': 'user', 'content': 'What's the weather like in Boston?'}],
+    functions=[
+        {
+            'name': 'get_current_weather',
+            'description': 'Get the current weather in a given location',
+            'parameters': {
+                'type': 'object',
+                'properties': {
+                    'location': {
+                        'type': 'string',
+                        'description': 'The city and state, e.g. San Francisco, CA',
+                    },
+                    'unit': {'type': 'string', 'enum': ['celsius', 'fahrenheit']},
+                },
+                'required': ['location'],
+            },
+        }
+    ],
+    function_call='auto',
+)
+
+if message.get('function_call'):
+    function_name = message['function_call']['name']
+    function_args = json.loads(message['function_call']['arguments'])
+
+second_response = openai.ChatCompletion.create(
+    model='gpt-4-0613',
+    messages=[
+        {'role': 'user', 'content': 'What is the weather like in boston?'},
+        message,
+        {
+            'role': 'function',
+            'name': function_name,
+            'content': function_response,
+        },
+    ],
+)
+print(second_response)
+```
+
+This script defines a function `get_current_weather` and then uses GPT-4 to call this function based on a user's query. The function's response is then fed back into the model to generate a user-friendly response.
